@@ -1,0 +1,111 @@
+//Configuración de núcleos a utilizar
+#ifdef CONFIG_FREERTOS_UNICORE
+// Si FreeRTOS esta configurado para usar un sólo núcleo se asigna el núcleo 0
+  static const BaseType_t app_cpu=0;
+#else
+// Se usan dos núcleos, se asigna el núcleo 1
+  static const BaseType_t app_cpu=1;
+#endif
+
+static TimerHandle_t auto_reload_timer1 =NULL;
+static TimerHandle_t auto_reload_timer2 =NULL;
+static TimerHandle_t auto_reload_timer3 =NULL;
+
+
+static int buf[buf_size];
+enum{buf_size=5};
+
+bool ledV=HIGH;
+bool ledA= LOW;
+bool ledR= LOW;
+int contador=0;
+
+void myTimerCallback1(TimerHandle_t xTimer){
+  /*Timer 1 a espirado*/
+  if((uint32_t)pvTimerGetTimerID(xTimer)==1){
+    
+    digitalWrite(12,LOW);
+    digitalWrite(33,HIGH);
+    ledA=true;
+  xTimerStop(auto_reload_timer1,portMAX_DELAY);
+  xTimerStart(auto_reload_timer2,portMAX_DELAY);
+
+  }
+}
+
+void myTimerCallback2(TimerHandle_t xTimer){
+  /*Timer 1 a espirado*/
+  if((uint32_t)pvTimerGetTimerID(xTimer)==1){
+  
+    digitalWrite(33,LOW);
+    if (contador<4){
+      ledA=!ledA;
+    
+      digitalWrite(33,ledA);
+      contador++;
+    }
+    else{
+      contador=0;
+      digitalWrite(33, LOW);
+      xTimerStop(auto_reload_timer2,portMAX_DELAY);
+      digitalWrite(32, HIGH);
+      xTimerStart(auto_reload_timer3,portMAX_DELAY);
+    } 
+
+  }
+}
+void myTimerCallback3(TimerHandle_t xTimer){
+  /*Timer 1 a espirado*/
+  if((uint32_t)pvTimerGetTimerID(xTimer)==1){
+    Serial.print("Timer 3");
+    digitalWrite(32,LOW);
+    xTimerStop(auto_reload_timer3,portMAX_DELAY);
+    xTimerStart(auto_reload_timer1,portMAX_DELAY);
+    digitalWrite(12, HIGH);
+
+  }
+}
+
+void setup() {
+  pinMode(12,OUTPUT);//Rojo
+  pinMode(33,OUTPUT);//Verde
+  pinMode(32,OUTPUT);//Amarillo
+
+  digitalWrite(12, LOW);
+  digitalWrite(33, LOW);
+  digitalWrite(32, LOW);
+
+
+  
+
+  Serial.begin(115200);
+  /*----Creaciñon de timers----*/
+  auto_reload_timer1 = xTimerCreate(
+                       "Timer Auto_reload",       //Nombre del Timer
+                       2000 /portTICK_PERIOD_MS,  //Periodo del Timer
+                       pdTRUE,                    //Auto_reload
+                       (void *)1,                 //ID Timer
+                       myTimerCallback1);         //Función que manda a llamar
+  
+  auto_reload_timer2 = xTimerCreate(
+                       "Timer Auto_reload",       //Nombre del Timer
+                       667 /portTICK_PERIOD_MS,  //Periodo del Timer
+                       pdTRUE,                    //Auto_reload
+                       (void *)1,                 //ID Timer
+                       myTimerCallback2);  
+  
+  auto_reload_timer3 = xTimerCreate(
+                       "Timer Auto_reload",       //Nombre del Timer
+                       2000 /portTICK_PERIOD_MS,  //Periodo del Timer
+                       pdTRUE,                    //Auto_reload
+                       (void *)1,                 //ID Timer
+                       myTimerCallback3);  
+ 
+  
+  xTimerStart(auto_reload_timer3,portMAX_DELAY);
+}
+
+void loop() {
+  // put your main code here, to run repeatedly:
+
+}
