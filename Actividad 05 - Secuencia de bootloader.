@@ -1,0 +1,122 @@
+//Configuración de núcleos a utilizar
+#ifdef CONFIG_FREERTOS_UNICORE
+// Si FreeRTOS esta configurado para usar un sólo núcleo se asigna el núcleo 0
+  static const BaseType_t app_cpu=0;
+#else
+// Se usan dos núcleos, se asigna el núcleo 1
+  static const BaseType_t app_cpu=1;
+#endif
+
+static const int led_pin=4;
+static const int led_pin2=2;
+int estado=0;
+
+static const int led_pin3=16;
+static const int boton1=5;
+static const int boton2=17;
+
+//Tarea que parpadea LED en pin 4
+void toggleLED(void *parameter){
+  while(1){
+      digitalWrite(led_pin, HIGH);
+      vTaskDelay(500 / portTICK_PERIOD_MS); // Reemplazo de delay() por vTaskDelay()
+      digitalWrite(led_pin, LOW);
+      vTaskDelay(500 / portTICK_PERIOD_MS); // Reemplazo de delay() por vTaskDelay()
+  }
+}
+
+//Tarea que parpadea LED en pin 2
+void toggleLED2(void *parameter){
+  while(1){
+      digitalWrite(led_pin2, HIGH);
+      vTaskDelay(323 / portTICK_PERIOD_MS); // Reemplazo de delay() por vTaskDelay()
+      digitalWrite(led_pin2, LOW);
+      vTaskDelay(323 / portTICK_PERIOD_MS); // Reemplazo de delay() por vTaskDelay()
+  }
+}
+
+//Tarea que gestiona la secuencia de botones y LED en pin 16
+void  secuenciaBoot(void *parameter){
+  while(1){
+    
+    bool estado1=(digitalRead(boton1)==LOW);
+    bool estado2=(digitalRead(boton2)==LOW);
+
+    switch(estado){
+      case 0:
+        if (estado1 && estado2){
+          estado=1;
+        }
+        break;
+
+      case 1:
+        if ((!estado1 && estado2) || (!estado2 && estado1)){
+          estado=2;
+        }
+        break;
+
+      case 2:
+        if(!estado1 && !estado2){
+          estado=3;
+        }
+        break;
+
+      case 3:
+        if((!estado1 && estado2) ||(estado1 && !estado2)){
+          estado=4;
+        }
+        break;
+    
+      case 4:
+        // Solo enciende si se mantiene la secuencia correcta: ambos botones presionados
+        if(estado1 && estado2){
+          digitalWrite(led_pin3, HIGH);
+          vTaskDelay(2000 / portTICK_PERIOD_MS); 
+          digitalWrite(led_pin3, LOW);
+          estado=0;
+        }
+        break;
+    }
+    vTaskDelay(50 / portTICK_PERIOD_MS); // Anti-rebote y ahorro de CPU
+  }
+}
+
+void setup(){
+  pinMode(led_pin, OUTPUT);
+  pinMode(led_pin2, OUTPUT);
+  pinMode(led_pin3, OUTPUT);
+  pinMode(boton1, INPUT_PULLUP);
+  pinMode(boton2, INPUT_PULLUP);
+
+  //Creación de una tarea que se ejecutará de forma indefinida
+  xTaskCreatePinnedToCore(
+                  toggleLED,      //Función que complemente la tarea
+                  "Toggle LED1",   //Nombre descriptivo de la función
+                  1024,           //Tamaño de la pila asignada
+                  NULL,           //Parametro a pasar de la función
+                  1,              //Priodidad de función
+                  NULL,           //Handdle de la tarea
+                  app_cpu);       //Núcleo en eel se ejecutará la tarea (0 ó 1)
+
+   xTaskCreatePinnedToCore(
+                  toggleLED2,      //Función que complemente la tarea
+                  "Toggle LED2",   //Nombre descriptivo de la función
+                  1024,           //Tamaño de la pila asignada
+                  NULL,           //Parametro a pasar de la función
+                  1,              //Priodidad de función
+                  NULL,           //Handdle de la tarea
+                  app_cpu);       //Núcleo en eel se ejecutará la tarea (0 ó 1)   
+ 
+  xTaskCreatePinnedToCore(
+                  secuenciaBoot,      //Función que complemente la tarea
+                  "Bool botones",   //Nombre descriptivo de la función
+                  2048,             //Tamaño de la pila asignada (un poco más grande por la lógica)
+                  NULL,             //Parametro a pasar de la función
+                  2,                //Priodidad de función (más alta para respuesta rápida)
+                  NULL,             //Handdle de la tarea
+                  app_cpu);         //Núcleo en eel se ejecutará la tarea (0 ó 1)   
+}
+
+void loop(){
+  //Vacío porque todo se maneja en tareas RTOS
+}
