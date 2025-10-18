@@ -1,0 +1,127 @@
+//Configuración de núcleos a utilizar
+#ifdef CONFIG_FREERTOS_UNICORE
+// Si FreeRTOS esta configurado para usar un sólo núcleo se asigna el núcleo 0
+  static const BaseType_t app_cpu=0;
+#else
+// Se usan dos núcleos, se asigna el núcleo 1
+  static const BaseType_t app_cpu=1;
+#endif
+
+//Salidas leds
+static const int harinita=4;
+static const int lechita=16;
+static const int aguita=18;
+static const int servir=21;
+static const int batidora=2 ;
+static const int tirar=15 ;
+
+//Para switch
+int estado=0;
+
+//Entradas botones
+static const int Sp1=5;
+static const int Sp2=17;
+static const int VL=19;
+
+//Tarea creación pastel
+void  Harina(void *parameter){
+  while(1){
+    
+    bool Sensor1=(digitalRead(Sp1)==LOW);
+
+    if (Sensor1==HIGH){ 
+        digitalWrite(harinita,HIGH);   // corregido: antes encendía lechita
+        vTaskDelay(800 / portTICK_PERIOD_MS); 
+        digitalWrite(harinita,LOW);
+    }
+    
+  }
+}
+void  Leche(void *parameter){
+  while(1){
+    
+    bool Sensor2=(digitalRead(Sp2)==LOW);
+    if (Sensor2==HIGH){
+      digitalWrite(lechita,HIGH);
+      vTaskDelay(800 / portTICK_PERIOD_MS); 
+      digitalWrite(lechita,LOW);
+
+     
+      digitalWrite(servir,HIGH);
+      vTaskDelay(800 / portTICK_PERIOD_MS); 
+      digitalWrite(servir,LOW);
+
+      
+      digitalWrite(aguita,HIGH);
+    }
+
+  }}
+
+  void  Mezcla(void *parameter){
+  while(1){
+  
+    bool Nivel=(digitalRead(VL)==LOW);
+    
+    if (Nivel==HIGH){   // corregido: antes comparaba número de pin
+    digitalWrite(aguita,LOW);
+    
+    digitalWrite(batidora,HIGH);
+    vTaskDelay(800 / portTICK_PERIOD_MS); 
+    digitalWrite(batidora,LOW);
+
+    digitalWrite(tirar,HIGH);
+    vTaskDelay(800 / portTICK_PERIOD_MS); 
+    digitalWrite(tirar,LOW);
+
+    }
+    
+  }}
+
+
+
+void setup(){
+  pinMode(tirar, OUTPUT);
+  pinMode(aguita, OUTPUT);
+  pinMode(lechita, OUTPUT);
+  pinMode(harinita, OUTPUT);
+  pinMode(servir, OUTPUT);
+  pinMode(batidora, OUTPUT);
+  pinMode(Sp1, INPUT_PULLUP);
+  pinMode(Sp2, INPUT_PULLUP);
+  pinMode(VL, INPUT_PULLUP);
+
+  //Creación de una tarea que se ejecutará de forma indefinida
+  xTaskCreatePinnedToCore(
+                  Harina,      //Función que complemente la tarea
+                  "Harina",   //Nombre descriptivo de la función
+                  2048,           //Tamaño de la pila asignada
+                  NULL,           //Parametro a pasar de la función
+                  1,              //Priodidad de función
+                  NULL,           //Handdle de la tarea
+                  app_cpu);       //Núcleo en eel se ejecutará la tarea (0 ó 1)
+//Creación de una tarea que se ejecutará de forma indefinida
+  xTaskCreatePinnedToCore(
+                  Leche,      //Función que complemente la tarea
+                  "Lechita",   //Nombre descriptivo de la función
+                  4096,           //Tamaño de la pila asignada
+                  NULL,           //Parametro a pasar de la función
+                  1,              //Priodidad de función
+                  NULL,           //Handdle de la tarea
+                  app_cpu);       //Núcleo en eel se ejecutará la tarea (0 ó 1)
+  //Creación de una tarea que se ejecutará de forma indefinida
+  xTaskCreatePinnedToCore(
+                  Mezcla,      //Función que complemente la tarea
+                  "mezclita",   //Nombre descriptivo de la función
+                  4096,           //Tamaño de la pila asignada
+                  NULL,           //Parametro a pasar de la función
+                  1,              //Priodidad de función
+                  NULL,           //Handdle de la tarea
+                  app_cpu);       //Núcleo en eel se ejecutará la tarea (0 ó 1)
+  
+  
+
+}
+
+void loop(){
+  //Vacío porque todo se maneja en tareas RTOS
+}
