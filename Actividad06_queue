@@ -1,0 +1,84 @@
+#if CONFIG_FREERTOS_UNICORE
+  static const BaseType_t app_cpu = 0; 
+#else
+  static const BaseType_t app_cpu = 1; 
+#endif
+
+static const uint8_t msg_queue_len = 5;
+static QueueHandle_t buffer1;
+static QueueHandle_t buffer2;
+
+// ---------- Tarea Generadora de Números ----------
+//      (Código originalmente situado en loop)
+void tareaGeneradora(void *parameters){
+  int num = 0;
+  while(1){
+    if(xQueueSend(buffer1, &num, 0) != pdTRUE){
+      Serial.println("Buffer 1 lleno");
+    } else {
+      Serial.print("Generador. Enviado al buffer1: ");
+      Serial.println(num);
+    }
+    num++;
+    vTaskDelay(500 / portTICK_PERIOD_MS);
+  }
+}
+
+// ---------- Tarea A ----------
+void tareaA(void *parameters){
+  int item;
+  while(1){
+    if(xQueueReceive(buffer1, &item, portMAX_DELAY) == pdTRUE){
+      Serial.print("Tarea A. Recibió del buffer1: ");
+      Serial.println(item);
+      xQueueSend(buffer2, &item, portMAX_DELAY);
+    }
+  }
+}
+
+// ---------- Tarea B ----------
+void tareaB(void *parameters){
+  int item;
+  while(1){
+    if(xQueueReceive(buffer2, &item, portMAX_DELAY) == pdTRUE){
+      Serial.print("Tarea B. Recibió del buffer2: ");
+      Serial.println(item);
+    }
+  }
+}
+
+void setup(){
+  Serial.begin(115200);
+  vTaskDelay(1000 / portTICK_PERIOD_MS); 
+
+  // Crear buffers
+  buffer1 = xQueueCreate(msg_queue_len, sizeof(int));
+  buffer2 = xQueueCreate(msg_queue_len, sizeof(int));
+
+  // Crear tareas
+  xTaskCreatePinnedToCore(tareaGeneradora, 
+                          "Productora", 
+                          1024, 
+                          NULL, 
+                          1, 
+                          NULL, 
+                          app_cpu);
+  xTaskCreatePinnedToCore(tareaA, 
+                          "Tarea A", 
+                          1024, 
+                          NULL, 
+                          1, 
+                          NULL, 
+                          app_cpu);
+  xTaskCreatePinnedToCore(tareaB, 
+                          "Tarea B", 
+                          1024, 
+                          NULL, 
+                          1, 
+                          NULL, 
+                          app_cpu);
+}
+
+void loop(){
+
+}
